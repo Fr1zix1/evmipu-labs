@@ -88,7 +88,6 @@ static void calculateInverseBlas(const float *matrixA, float *inverseMatrix, int
             // Умножаем матрицы через BLAS (alpha=1.0, beta=0.0) для получения новой степени
             cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 
                         size, size, size, 1.0f, currentPowerR, size, matrixR, size, 0.0f, nextPowerR, size);
-            // Переставляем указатели, чтобы не тратить время на копирование памяти
             float *tempPointer = currentPowerR;
             currentPowerR = nextPowerR;
             nextPowerR = tempPointer;
@@ -139,9 +138,12 @@ int main(int argc, char **argv) {
     // Печать результатов
     printf("[BLAS] N = %d, M = %d | Time: %.4f sec\n", matrixSize, iterationsCount, elapsedSeconds);
 
-    // Блок проверки корректности (сработает только для маленьких матриц, например N=4)
+    // Блок автоматической проверки корректности
     if (matrixSize <= 4) {
-        printf("\nПроверка результата (A * A_inv):\n");
+        printf("\nЗапуск автоматической проверки (A * A_inv)...\n");
+        int isCorrect = 1;
+        float epsilon = 1e-3f; // Погрешность
+
         for (int i = 0; i < matrixSize; ++i) {
             for (int j = 0; j < matrixSize; ++j) {
                 float checkSum = 0.0f;
@@ -149,12 +151,26 @@ int main(int argc, char **argv) {
                 for (int k = 0; k < matrixSize; ++k) {
                     checkSum += matrixA[i * matrixSize + k] * inverseMatrix[k * matrixSize + j];
                 }
-                // Выводим результат на экран
-                printf("%6.3f ", checkSum);
+
+                // Определяем значение единичной матрицы
+                float expectedValue = 0.0f;
+                if (i == j) {
+                    expectedValue = 1.0f;
+                }
+
+                // Сравниваем результат с единичной
+                if (fabsf(checkSum - expectedValue) > epsilon) {
+                    isCorrect = 0;
+                }
             }
-            printf("\n");
         }
-        printf("(Должна получиться единичная матрица: 1.0 по диагонали, остальное близко к 0.0)\n");
+
+        // Выносим итоговый вердикт
+        if (isCorrect) {
+            printf("Вердикт: УСПЕШНО. Получена единичная матрица.\n");
+        } else {
+            printf("Вердикт: ОШИБКА. Матрица не совпадает с единичной.\n");
+        }
     }
 
     free(matrixA);
