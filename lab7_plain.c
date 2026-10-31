@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -114,7 +113,6 @@ static void calculateInversePlain(const float *matrixA, float *inverseMatrix, in
         if (iter < iterationsCount - 1) {
             // Вычисляем следующую степень матрицы R
             multiplyMatrices(currentPowerR, matrixR, nextPowerR, size);
-            // Меняем указатели местами, чтобы не копировать память целиком
             float *tempPointer = currentPowerR;
             currentPowerR = nextPowerR;
             nextPowerR = tempPointer;
@@ -169,7 +167,7 @@ int main(int argc, char **argv) {
     if (matrixSize <= 4) {
         printf("\nЗапуск автоматической проверки (A * A_inv)...\n");
         int isCorrect = 1;
-        float epsilon = 1e-3f; // Допустимая погрешность
+        float epsilon = 1e-3f; // Погрешность
 
         for (int i = 0; i < matrixSize; ++i) {
             for (int j = 0; j < matrixSize; ++j) {
@@ -179,20 +177,19 @@ int main(int argc, char **argv) {
                     checkSum += matrixA[i * matrixSize + k] * inverseMatrix[k * matrixSize + j];
                 }
 
-                // Определяем идеальное значение единичной матрицы
+                // Определяем значение единичной матрицы
                 float expectedValue = 0.0f;
                 if (i == j) {
                     expectedValue = 1.0f;
                 }
 
-                // Сравниваем результат с идеалом
+                // Сравниваем результат с единичной
                 if (fabsf(checkSum - expectedValue) > epsilon) {
                     isCorrect = 0;
                 }
             }
         }
 
-        // Выносим итоговый вердикт
         if (isCorrect) {
             printf("Вердикт: УСПЕШНО. Получена единичная матрица.\n");
         } else {
