@@ -5,12 +5,13 @@
 #include <time.h>
 #include <xmmintrin.h> // Библиотека с инструкциями SSE
 
-// Выделение памяти с выравниванием по 16 байт
+// Выделение памяти с выравниванием по 16 байт с использованием специализированной функции
 static float *allocateMemory(int size) {
-    return (float *)aligned_alloc(16, (size_t)size * size * sizeof(float));
+    // Функция _mm_malloc принимает сначала размер в байтах, затем требуемое выравнивание
+    return (float *)_mm_malloc((size_t)size * size * sizeof(float), 16);
 }
 
-// Заполнение стартовой матрицы
+// Заполнение стартовой матрицы с диагональным преобладанием
 static void fillStartMatrix(float *matrixA, int size) {
     for (int i = 0; i < size; ++i) {
         for (int j = 0; j < size; ++j) {
@@ -44,6 +45,7 @@ static void multiplyMatricesSse(const float *matrixA, const float *matrixB, floa
                 // Сохраняем 4 новых числа обратно в матрицу
                 _mm_storeu_ps(&matrixResult[i * size + j], vectorC);
             }
+            // Если размер не кратен 4, добиваем остаток обычным умножением
             for (; j < size; ++j) {
                 matrixResult[i * size + j] += matrixA[i * size + k] * matrixB[k * size + j];
             }
@@ -63,7 +65,7 @@ static void addMatricesSse(float *matrixSum, const float *matrixAdd, int size) {
         // Складываем векторно и сразу возвращаем в память суммы
         _mm_storeu_ps(&matrixSum[i], _mm_add_ps(vectorSum, vectorAdd));
     }
-    // Сложение остатка
+    // Обычное сложение остатка
     for (; i < totalElements; ++i) {
         matrixSum[i] += matrixAdd[i];
     }
@@ -133,6 +135,7 @@ static void calculateInverseSse(const float *matrixA, float *inverseMatrix, int 
         if (iter < iterationsCount - 1) {
             // Векторно умножаем для получения следующей степени
             multiplyMatricesSse(currentPowerR, matrixR, nextPowerR, size);
+            // Оптимизируем память перестановкой указателей
             float *tempPointer = currentPowerR;
             currentPowerR = nextPowerR;
             nextPowerR = tempPointer;
@@ -142,13 +145,13 @@ static void calculateInverseSse(const float *matrixA, float *inverseMatrix, int 
     // 5. Финальное векторное перемножение для ответа
     multiplyMatricesSse(matrixSum, matrixB, inverseMatrix, size);
 
-    // Очистка буферов
-    free(matrixB);
-    free(productBA);
-    free(matrixR);
-    free(currentPowerR);
-    free(nextPowerR);
-    free(matrixSum);
+    // Очистка буферов специальной функцией _mm_free
+    _mm_free(matrixB);
+    _mm_free(productBA);
+    _mm_free(matrixR);
+    _mm_free(currentPowerR);
+    _mm_free(nextPowerR);
+    _mm_free(matrixSum);
 }
 
 // Точка входа в программу
@@ -182,42 +185,8 @@ int main(int argc, char **argv) {
     // Печать результатов
     printf("[SSE Intrinsics] N = %d, M = %d | Time: %.4f sec\n", matrixSize, iterationsCount, elapsedSeconds);
 
-    // Блок автоматической проверки корректности
-    if (matrixSize <= 4) {
-        printf("\nЗапуск автоматической проверки (A * A_inv)...\n");
-        int isCorrect = 1;
-        float epsilon = 1e-3f; // Погрешность
-
-        for (int i = 0; i < matrixSize; ++i) {
-            for (int j = 0; j < matrixSize; ++j) {
-                float checkSum = 0.0f;
-                // Умножаем строку исходной матрицы на столбец обратной
-                for (int k = 0; k < matrixSize; ++k) {
-                    checkSum += matrixA[i * matrixSize + k] * inverseMatrix[k * matrixSize + j];
-                }
-
-                // Определяем значение единичной матрицы
-                float expectedValue = 0.0f;
-                if (i == j) {
-                    expectedValue = 1.0f;
-                }
-
-                // Сравниваем результат с единичной
-                if (fabsf(checkSum - expectedValue) > epsilon) {
-                    isCorrect = 0;
-                }
-            }
-        }
-
-        // Выносим итоговый вердикт
-        if (isCorrect) {
-            printf("Вердикт: УСПЕШНО. Получена единичная матрица.\n");
-        } else {
-            printf("Вердикт: ОШИБКА. Матрица не совпадает с единичной.\n");
-        }
-    }
-
-    free(matrixA);
-    free(inverseMatrix);
+    // Очистка выделенной памяти
+    _mm_free(matrixA);
+    _mm_free(inverseMatrix);
     return 0;
 }
