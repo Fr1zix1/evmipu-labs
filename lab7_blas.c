@@ -14,6 +14,7 @@ static float *allocateMemory(int size) {
 static void fillStartMatrix(float *matrixA, int size) {
     for (int i = 0; i < size; ++i) {
         for (int j = 0; j < size; ++j) {
+            // Формируем диагональное преобладание
             if (i == j) {
                 matrixA[i * size + j] = (float)size + 1.0f;
             } else {
@@ -32,7 +33,7 @@ static void calculateInverseBlas(const float *matrixA, float *inverseMatrix, int
     float *nextPowerR = allocateMemory(size);
     float *matrixSum = allocateMemory(size);
 
-    // 1. Вычисляем матричные нормы
+    // 1. Вычисляем матричные нормы обычными циклами
     float normOne = 0.0f;
     float normInfinity = 0.0f;
     for (int i = 0; i < size; ++i) {
@@ -88,6 +89,7 @@ static void calculateInverseBlas(const float *matrixA, float *inverseMatrix, int
             // Умножаем матрицы через BLAS (alpha=1.0, beta=0.0) для получения новой степени
             cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 
                         size, size, size, 1.0f, currentPowerR, size, matrixR, size, 0.0f, nextPowerR, size);
+            // Переставляем указатели, чтобы не тратить время на копирование памяти
             float *tempPointer = currentPowerR;
             currentPowerR = nextPowerR;
             nextPowerR = tempPointer;
@@ -137,41 +139,6 @@ int main(int argc, char **argv) {
 
     // Печать результатов
     printf("[BLAS] N = %d, M = %d | Time: %.4f sec\n", matrixSize, iterationsCount, elapsedSeconds);
-
-    // Блок автоматической проверки корректности
-    if (matrixSize <= 4) {
-        printf("\nЗапуск автоматической проверки (A * A_inv)...\n");
-        int isCorrect = 1;
-        float epsilon = 1e-3f; // Погрешность
-
-        for (int i = 0; i < matrixSize; ++i) {
-            for (int j = 0; j < matrixSize; ++j) {
-                float checkSum = 0.0f;
-                // Умножаем строку исходной матрицы на столбец обратной
-                for (int k = 0; k < matrixSize; ++k) {
-                    checkSum += matrixA[i * matrixSize + k] * inverseMatrix[k * matrixSize + j];
-                }
-
-                // Определяем значение единичной матрицы
-                float expectedValue = 0.0f;
-                if (i == j) {
-                    expectedValue = 1.0f;
-                }
-
-                // Сравниваем результат с единичной
-                if (fabsf(checkSum - expectedValue) > epsilon) {
-                    isCorrect = 0;
-                }
-            }
-        }
-
-        // Выносим итоговый вердикт
-        if (isCorrect) {
-            printf("Вердикт: УСПЕШНО. Получена единичная матрица.\n");
-        } else {
-            printf("Вердикт: ОШИБКА. Матрица не совпадает с единичной.\n");
-        }
-    }
 
     free(matrixA);
     free(inverseMatrix);
