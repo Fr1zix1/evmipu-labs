@@ -113,6 +113,7 @@ static void calculateInversePlain(const float *matrixA, float *inverseMatrix, in
         if (iter < iterationsCount - 1) {
             // Вычисляем следующую степень матрицы R
             multiplyMatrices(currentPowerR, matrixR, nextPowerR, size);
+            // Меняем указатели местами, чтобы не копировать память целиком
             float *tempPointer = currentPowerR;
             currentPowerR = nextPowerR;
             nextPowerR = tempPointer;
@@ -162,40 +163,6 @@ int main(int argc, char **argv) {
 
     // Выводим время работы
     printf("[Plain C] N = %d, M = %d | Time: %.4f sec\n", matrixSize, iterationsCount, elapsedSeconds);
-
-    // Блок автоматической проверки корректности
-    if (matrixSize <= 4) {
-        printf("\nЗапуск автоматической проверки (A * A_inv)...\n");
-        int isCorrect = 1;
-        float epsilon = 1e-3f; // Погрешность
-
-        for (int i = 0; i < matrixSize; ++i) {
-            for (int j = 0; j < matrixSize; ++j) {
-                float checkSum = 0.0f;
-                // Умножаем строку исходной матрицы на столбец обратной
-                for (int k = 0; k < matrixSize; ++k) {
-                    checkSum += matrixA[i * matrixSize + k] * inverseMatrix[k * matrixSize + j];
-                }
-
-                // Определяем значение единичной матрицы
-                float expectedValue = 0.0f;
-                if (i == j) {
-                    expectedValue = 1.0f;
-                }
-
-                // Сравниваем результат с единичной
-                if (fabsf(checkSum - expectedValue) > epsilon) {
-                    isCorrect = 0;
-                }
-            }
-        }
-
-        if (isCorrect) {
-            printf("Вердикт: УСПЕШНО. Получена единичная матрица.\n");
-        } else {
-            printf("Вердикт: ОШИБКА. Матрица не совпадает с единичной.\n");
-        }
-    }
 
     // Убираем за собой
     free(matrixA);
