@@ -8,7 +8,7 @@
 int main(void) {
     size_t max_fragments = 32;
     
-    size_t cache_sizes[] = {32 * 1024, 256 * 1024, 24 * 1024 * 1024}; 
+    size_t cache_sizes[] = {32 * 1024, 256 * 1024, 12 * 1024 * 1024}; 
     const char *cache_names[] = {"L1", "L2", "L3"};
     size_t num_caches = sizeof(cache_sizes) / sizeof(cache_sizes[0]);
 
